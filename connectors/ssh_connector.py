@@ -46,7 +46,7 @@ class SSHConnector:
             }
         )
         self._shell = self._ssh.invoke_shell()
-        self._shell.recv(65535)  # Clear banner or leftover output
+        self._shell.recv(65535)
 
     def _send_cmd(self, cmd: str, prompts: list[str] = None, delay: float = 0.5, timeout: float = 0) -> str:
         logger.info(f"Sending command: {cmd}")
@@ -149,14 +149,14 @@ class SSHConnector:
           custom.qos_interfaces:  ['Gi1', 'Gi2', ...]
         """
         if not self.device.custom.get('qos_enable', False):
-            return  # Skip if QoS not requested
+            return  
 
         qos_ifaces = self.device.custom.get('qos_interfaces', [])
         if not qos_ifaces:
             logger.warning("qos_enable is True but qos_interfaces list is empty")
             return
 
-        # --- 1) ACLs -------------------------------------------------------------
+        
         acls = {
             'VOIP-TRAFFIC': 'permit udp any any eq 5060',
             'DNS-TRAFFIC': 'permit udp any any eq 53',
@@ -169,16 +169,16 @@ class SSHConnector:
             self._send_cmd(permit_stmt, prompts=[r'\(config-ext-nacl\)#'])
             self._send_cmd('exit', prompts=[r'\(config\)#'])
 
-        # --- 2) Class‑maps -------------------------------------------------------
+        
         for acl_name in acls:
-            class_name = acl_name.split('-')[0] + '-CLASS'  # e.g. VOIP-CLASS
+            class_name = acl_name.split('-')[0] + '-CLASS' 
             self._send_cmd(f'class-map match-any {class_name}',
                            prompts=[r'\(config-cmap\)#'])
             self._send_cmd(f'match access-group name {acl_name}',
                            prompts=[r'\(config-cmap\)#'])
             self._send_cmd('exit', prompts=[r'\(config\)#'])
 
-        # --- 3) Policy‑map -------------------------------------------------------
+        
         self._send_cmd('policy-map QOS-POLICY', prompts=[r'\(config-pmap\)#'])
         self._send_cmd(' class VOIP-CLASS', prompts=[r'\(config-pmap-c\)#'])
         self._send_cmd('  priority 1000', prompts=[r'\(config-pmap-c\)#'])
@@ -193,7 +193,7 @@ class SSHConnector:
         self._send_cmd('end', prompts=[r'#'])
         self._send_cmd('configure terminal', prompts=[r'\(config\)#'])
 
-        # --- 4) Attach policy to each interface ----------------------------------
+        
         for iface in qos_ifaces:
             self._send_cmd(f'interface {iface}', prompts=[r'\(config-if\)#'])
             self._send_cmd('service-policy output QOS-POLICY',
@@ -221,7 +221,7 @@ class SSHConnector:
 
         self.configure_interfaces()
         self.configure_rip()
-        self.configure_ospf() # testing ospf configuration
+        self.configure_ospf() 
         self.configure_dhcp_pools()
         self.configure_qos()
 
